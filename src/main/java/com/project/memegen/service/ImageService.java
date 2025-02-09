@@ -3,6 +3,7 @@ package com.project.memegen.service;
 import com.project.memegen.entity.Image;
 import com.project.memegen.repository.UserRepository;
 import com.project.memegen.utils.JwtUtil;
+import com.project.memegen.utils.NameUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
@@ -53,7 +54,7 @@ public class ImageService {
     public Image uploadImage(MultipartFile file, String token, String imageUrl) throws IOException {
         byte[] fileBytes = file.getBytes();
         String folder = "uploads/";
-        String originalFilename = UUID.randomUUID() + file.getOriginalFilename();
+        String originalFilename = UUID.randomUUID() + NameUtil.sanitizeFileName(file);
         String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8.toString());
         String objectPath = folder + encodedFilename;
         String uploadUrl = String.format("%s/storage/v1/object/%s/%s?upsert=true",
@@ -82,7 +83,7 @@ public class ImageService {
             }
             Image newImage = Image.builder()
                     .url(url)
-                    .name(file.getOriginalFilename())
+                    .name(NameUtil.sanitizeFileName(file))
                     .user(userRepository.findByUsername(JwtUtil.extractUsername(token)).get())
                     .createdAt(Timestamp.from(Instant.now()))
                     .updatedAt(Timestamp.from(Instant.now()))
