@@ -1,23 +1,23 @@
 package com.project.memegen.controller;
 
-
 import com.project.memegen.dto.ImageDto;
-import com.project.memegen.entity.Image;
 import com.project.memegen.mapper.ImageMapper;
 import com.project.memegen.service.ImageService;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
+import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @RestController
 @AllArgsConstructor
@@ -27,34 +27,46 @@ public class ImageController {
     private final ImageMapper mapper;
 
     @GetMapping("/images")
-    public List<ImageDto> getAllUserImages(@RequestParam String token){
-        return imageService.userImages(token)
+    public List<ImageDto> getAllUserImages(@RequestHeader("Authorization") String token) {
+        String jwtToken = token.startsWith("Bearer ") ? token.substring(7) : token;
+        return imageService.userImages(jwtToken)
                 .stream()
                 .map(mapper::toRest)
                 .toList();
     }
 
+
     @PostMapping("/image/send")
-    public ImageDto uploadFile(@RequestParam("file") MultipartFile file,@RequestParam String token) throws IOException {
-        return mapper.toRest(imageService.uploadImage(file,token,null));
+    public ImageDto uploadFile(@RequestParam("file") MultipartFile file,@RequestHeader("Authorization") String token) throws IOException {
+        String jwtToken = token.startsWith("Bearer ") ? token.substring(7) : token;
+        return mapper.toRest(imageService.uploadImage(file,jwtToken,null));
     }
 
     @PutMapping("/image/update")
     public ImageDto updateImage(
             @RequestParam String imageUrl,
-            @RequestParam String token,
+            @RequestHeader("Authorization") String token,
             @RequestParam("file") MultipartFile file) throws IOException {
+        String jwtToken = token.startsWith("Bearer ") ? token.substring(7) : token;
         imageService.deleteImage(imageUrl);
-        return mapper.toRest(imageService.uploadImage(file,token,imageUrl));
+        return mapper.toRest(imageService.uploadImage(file,jwtToken,imageUrl));
     }
 
     @PutMapping("/image/delete")
-    public String deleteImage(@RequestParam String imageUrl){
-        return imageService.deleteImage(imageUrl);
+    public ResponseEntity<Map<String, String>> deleteImage(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String imageUrl) {
+        if(token == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Not authorized");
+        Map<String, String> response = new HashMap<>();
+        response.put("isdeleted", imageService.deleteImage(imageUrl));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/image/download")
-    public ResponseEntity<byte[]> downloadImage(@RequestParam String imageUrl) {
+    public ResponseEntity<byte[]> downloadImage(
+            @RequestHeader("Authorization") String token,
+            @RequestParam String imageUrl) {
+        if(token == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Not authorized");
         return imageService.downloadImage(imageUrl);
     }
 }

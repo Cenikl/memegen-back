@@ -4,15 +4,12 @@ import com.project.memegen.entity.User;
 import com.project.memegen.repository.UserRepository;
 import com.project.memegen.utils.JwtUtil;
 import lombok.AllArgsConstructor;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service

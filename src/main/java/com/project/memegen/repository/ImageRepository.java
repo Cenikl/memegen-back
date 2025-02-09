@@ -13,4 +13,6 @@ public interface ImageRepository extends JpaRepository<Image, UUID> {
     List<Image> findByUser_Username(@NonNull String username);
 
     Optional<Image> findByUrl(String url);
+
+    void deleteByUrl(@NonNull String url);
 }

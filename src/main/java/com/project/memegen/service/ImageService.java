@@ -3,22 +3,23 @@ package com.project.memegen.service;
 import com.project.memegen.entity.Image;
 import com.project.memegen.repository.UserRepository;
 import com.project.memegen.utils.JwtUtil;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import org.apache.commons.io.FilenameUtils;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import com.project.memegen.repository.ImageRepository;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -51,7 +52,6 @@ public class ImageService {
 
     public Image uploadImage(MultipartFile file, String token, String imageUrl) throws IOException {
         byte[] fileBytes = file.getBytes();
-        // Build the object path. Encode the filename portion.
         String folder = "uploads/";
         String originalFilename = UUID.randomUUID() + file.getOriginalFilename();
         String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8.toString());
@@ -59,9 +59,7 @@ public class ImageService {
         String uploadUrl = String.format("%s/storage/v1/object/%s/%s?upsert=true",
                 SUPABASE_URL, BUCKET_NAME, objectPath);
 
-        // Set up HTTP headers
         HttpHeaders headers = new HttpHeaders();
-        // Use the file's actual content type if available
         String contentType = file.getContentType() != null ? file.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
         headers.setContentType(MediaType.parseMediaType(contentType));
         headers.setContentLength(fileBytes.length);
@@ -70,7 +68,6 @@ public class ImageService {
 
         HttpEntity<byte[]> requestEntity = new HttpEntity<>(fileBytes, headers);
 
-        // Execute the PUT request
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.PUT, requestEntity, String.class);
 
@@ -96,6 +93,7 @@ public class ImageService {
         }
     }
 
+    @Transactional
     public String deleteImage(String imageUrl) {
         String cleanedUrl = imageUrl.replace("/public/", "/");
         RestTemplate restTemplate = new RestTemplate();
@@ -106,9 +104,9 @@ public class ImageService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         ResponseEntity<String> response = restTemplate.exchange(cleanedUrl, HttpMethod.DELETE, entity, String.class);
-        System.out.println(response.getStatusCode());
+        imageRepository.deleteByUrl(imageUrl);
 
-        if (response.getStatusCode() == HttpStatus.OK) {
+        if (response.getStatusCode().is2xxSuccessful()) {
             return "File deleted successfully.";
         } else {
             return "Failed to delete file: " + response.getBody();
@@ -129,7 +127,7 @@ public class ImageService {
 
         if (response.getStatusCode() == HttpStatus.OK) {
             HttpHeaders responseHeaders = new HttpHeaders();
-            responseHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            responseHeaders.setContentType(MediaType.IMAGE_JPEG);
             responseHeaders.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
 
             return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);

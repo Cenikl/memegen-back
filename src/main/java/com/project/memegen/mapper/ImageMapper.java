@@ -2,7 +2,6 @@ package com.project.memegen.mapper;
 
 import com.project.memegen.dto.ImageDto;
 import com.project.memegen.entity.Image;
-import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
